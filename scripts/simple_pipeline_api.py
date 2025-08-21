@@ -304,7 +304,7 @@ def fetch_papers():
         additional_keyword = data.get('additional_keyword', '').strip()
         from_year = int(data.get('from_year', 2020))
         to_year = int(data.get('to_year', 2025))
-        total_results = min(int(data.get('total_results', 20)), 100)
+        total_results = min(int(data.get('total_results', 5)), 100)
         title_filter = data.get('title_filter', True)
         paper_type_filter = data.get('paper_type_filter', True)
 
@@ -832,12 +832,9 @@ def fetch_abstract_multi_source(title):
     # These require scraping or paid API, not implemented here for legal/ToS reasons.
     return {'found': False, 'abstract': '', 'source': 'none'}
 
+# Ensure the app runs on Hugging Face Spaces by binding to port 7860
 if __name__ == '__main__':
     print("\n==============================")
-    print("🚀 Starting Research Paper Pipeline Server on port 8000")
+    print("🚀 Starting Research Paper Pipeline Server")
     print("==============================\n")
-    app.run(host='0.0.0.0', port=8000, debug=True)
-
-# For Vercel deployment
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max file size
-if __name__ == "__main__": print("🚀 Starting Research Paper Pipeline Server on port 8002"); app.run(host="0.0.0.0", port=8002, debug=True)
+    app.run(host='0.0.0.0', port=7860, debug=True)

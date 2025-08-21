@@ -608,7 +608,10 @@
                         const downloadCSVBtn = document.getElementById('downloadCSVBtn');
                         if (downloadCSVBtn) {
                             downloadCSVBtn.style.display = 'inline-block';
-                            downloadCSVBtn.addEventListener('click', () => {
+                            // Remove any existing event listeners to prevent duplicates
+                            downloadCSVBtn.replaceWith(downloadCSVBtn.cloneNode(true));
+                            const newDownloadCSVBtn = document.getElementById('downloadCSVBtn');
+                            newDownloadCSVBtn.addEventListener('click', () => {
                                 if (allFetchedPapers.length > 0) {
                                     downloadCSV(allFetchedPapers);
                                 } else {
