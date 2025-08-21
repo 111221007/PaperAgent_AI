@@ -374,6 +374,7 @@
                     <button type="button" class="btn btn-outline" id="extractAbstractsBtn" style="display:none;" disabled>📄 Extract Abstracts</button>
                     <button type="button" class="btn btn-outline" id="categorizeBtn" style="display:none;" disabled>📊 Categorize & Keywords</button>
                     <button type="button" class="btn btn-outline" id="downloadBtn" disabled>📥 Download CSV</button>
+                    <button type="button" class="btn btn-outline" id="downloadPDFBtn" style="display:none;">📄 Download PDFs</button>
                     <button type="button" class="btn btn-outline" id="clearBtn">🗑️ Clear Results</button>
                 </div>
                 <div class="progress-container" id="progressContainer">
@@ -587,13 +588,13 @@
             });
 
             // Download PDFs
-            // document.getElementById('downloadPDFBtn').addEventListener('click', async function() {
-            //     if (allFetchedPapers.length === 0) {
-            //         showStatus('No papers available for PDF download', 'error');
-            //         return;
-            //     }
-            //     await downloadPDFsWithProgress(allFetchedPapers);
-            // });
+            document.getElementById('downloadPDFBtn').addEventListener('click', async function() {
+                if (allFetchedPapers.length === 0) {
+                    showStatus('No papers available for PDF download', 'error');
+                    return;
+                }
+                await downloadPDFsWithProgress(allFetchedPapers);
+            });
 
             async function downloadPDFsWithProgress(papers) {
                 if (isLoading) return;
@@ -730,7 +731,7 @@
             document.getElementById('clearBtn').addEventListener('click', function() {
                 clearResults();
                 document.getElementById('downloadBtn').disabled = true;
-                // document.getElementById('downloadPDFBtn').style.display = 'none';
+                document.getElementById('downloadPDFBtn').style.display = 'none';
                 document.getElementById('fetchMoreBtn').style.display = 'none';
                 allFetchedPapers = [];
                 fetchedPapers = [];
@@ -784,7 +785,7 @@
                         displayPapers(allFetchedPapers);
                         document.getElementById('downloadBtn').disabled = false;
                         document.getElementById('fetchMoreBtn').style.display = 'inline-block';
-                        // document.getElementById('downloadPDFBtn').style.display = 'inline-block';
+                        document.getElementById('downloadPDFBtn').style.display = 'inline-block';
 
                         // Enable the deduplicate and extract abstracts buttons
                         document.getElementById('deduplicateBtn').style.display = 'inline-block';
