@@ -4,7 +4,7 @@ Research Paper Pipeline API - Original Working Version
 Simple and reliable paper fetching and processing
 """
 
-from flask import Flask, request, jsonify, send_from_directory, send_file, Response, stream_with_context, make_response
+from flask import Flask, request, jsonify, send_from_directory, Response, stream_with_context, make_response
 from flask_cors import CORS
 import os
 import re
