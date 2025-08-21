@@ -372,9 +372,7 @@
                     <button type="button" class="btn btn-secondary" id="fetchMoreBtn" style="display:none;">➕ Fetch More Papers</button>
                     <button type="button" class="btn btn-outline" id="deduplicateBtn" style="display:none;" disabled>🔧 Deduplicate</button>
                     <button type="button" class="btn btn-outline" id="extractAbstractsBtn" style="display:none;" disabled>📄 Extract Abstracts</button>
-                    <button type="button" class="btn btn-outline" id="categorizeBtn" style="display:none;" disabled>📊 Categorize & Keywords</button>
-                    <button type="button" class="btn btn-outline" id="downloadBtn" disabled>📥 Download CSV</button>
-                    <button type="button" class="btn btn-outline" id="downloadPDFBtn" style="display:none;">📄 Download PDFs</button>
+                    <button type="button" class="btn btn-outline" id="downloadCSVBtn" style="display:none;">📥 Download CSV</button>
                     <button type="button" class="btn btn-outline" id="clearBtn">🗑️ Clear Results</button>
                 </div>
                 <div class="progress-container" id="progressContainer">
@@ -521,7 +519,6 @@
 
                     displayPapers(allFetchedPapers);
                     document.getElementById('extractAbstractsBtn').disabled = true;
-                    document.getElementById('categorizeBtn').disabled = false;
                     updateProcessSteps(4);
                     showStatus(`✅ Abstract extraction complete! Found abstracts for ${result.found} out of ${allFetchedPapers.length} papers.`, 'success');
                 } catch (error) {
@@ -533,199 +530,11 @@
                 }
             });
 
-            // Categorize & Keywords
-            document.getElementById('categorizeBtn').addEventListener('click', async function() {
-                if (isLoading || !allFetchedPapers.length) return;
-
-                setLoading(true);
-                showProgress();
-                showStatus('📊 Categorizing papers and extracting keywords (unsupervised)...', 'info');
-                updateProcessSteps(4);
-
-                try {
-                    const response = await fetch('/api/unsupervised_categorize', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ papers: allFetchedPapers })
-                    });
-
-                    let result = null;
-                    let errorMsg = '';
-                    try {
-                        result = await response.json();
-                    } catch (jsonErr) {
-                        errorMsg = ' (Invalid JSON response)';
-                    }
-
-                    if (!response.ok) {
-                        let backendError = (result && result.error) ? result.error : response.statusText;
-                        if (result && result.traceback) {
-                            backendError += '\n' + result.traceback;
-                        }
-                        throw new Error(backendError + errorMsg);
-                    }
-
-                    // Merge new columns into allFetchedPapers
-                    if (result && result.papers && result.papers.length === allFetchedPapers.length) {
-                        for (let i = 0; i < allFetchedPapers.length; i++) {
-                            allFetchedPapers[i].original_category = result.papers[i].original_category;
-                            allFetchedPapers[i].original_keywords = result.papers[i].original_keywords;
-                            allFetchedPapers[i].contributions = result.papers[i].contributions;
-                            allFetchedPapers[i].limitations = result.papers[i].limitations;
-                        }
-                    }
-                    displayPapers(allFetchedPapers);
-                    document.getElementById('categorizeBtn').disabled = true;
-                    updateProcessSteps(5);
-                    showStatus(`✅ Categorization complete! Added categories, keywords, contributions, and limitations for ${allFetchedPapers.length} papers.`, 'success');
-                } catch (error) {
-                    showStatus('❌ Error during categorization: ' + error.message, 'error');
-                    console.error('Categorization error:', error);
-                } finally {
-                    setLoading(false);
-                    hideProgress();
-                }
-            });
-
-            // Download PDFs
-            document.getElementById('downloadPDFBtn').addEventListener('click', async function() {
-                if (allFetchedPapers.length === 0) {
-                    showStatus('No papers available for PDF download', 'error');
-                    return;
-                }
-                await downloadPDFsWithProgress(allFetchedPapers);
-            });
+            // Removed Download PDFs button event listener
 
             async function downloadPDFsWithProgress(papers) {
-                if (isLoading) return;
-
-                setLoading(true);
-                showProgress();
-                clearResults();
-
-                // Show PDF download progress in results box
-                document.getElementById('resultsContainer').style.display = 'block';
-                document.getElementById('resultsBox').innerHTML = `
-                    <div style="margin-bottom: 20px;">
-                        <h4>📄 PDF DOWNLOAD PROGRESS</h4>
-                        <p>Downloading PDFs for <strong>${papers.length}</strong> papers...</p>
-                    </div>
-                `;
-
-                try {
-                    const response = await fetch('/api/download-pdfs-stream', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ papers: papers })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const reader = response.body.getReader();
-                    const decoder = new TextDecoder();
-                    let zipPath = null;
-                    let successfulDownloads = 0;
-                    let totalPapers = papers.length;
-
-                    while (true) {
-                        const { value, done } = await reader.read();
-                        if (done) break;
-
-                        const chunk = decoder.decode(value);
-                        const lines = chunk.split('\n');
-
-                        for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                try {
-                                    const data = JSON.parse(line.slice(6));
-
-                                    switch(data.type) {
-                                        case 'start':
-                                            showStatus(data.message, 'info');
-                                            addResultMessage(data.message, 'info');
-                                            break;
-                                        case 'processing':
-                                            addResultMessage(data.message, 'info');
-                                            break;
-                                        case 'success':
-                                            addResultMessage(data.message, 'success');
-                                            break;
-                                        case 'failed':
-                                            addResultMessage(data.message, 'error');
-                                            break;
-                                        case 'creating_zip':
-                                            addResultMessage(data.message, 'info');
-                                            showStatus(data.message, 'info');
-                                            break;
-                                        case 'complete':
-                                            successfulDownloads = data.successful;
-                                            zipPath = data.zip_path;
-                                            showStatus(data.message, 'success');
-                                            addResultMessage(data.message, 'success');
-
-                                            // Add download button for the ZIP
-                                            const downloadZipBtn = `
-                                                <div style="margin-top: 20px; text-align: center;">
-                                                    <button onclick="downloadZipFile('papers_pdfs.zip')" class="btn btn-primary">
-                                                        📥 Download ZIP (${successfulDownloads} PDFs)
-                                                    </button>
-                                                </div>
-                                            `;
-                                            document.getElementById('resultsBox').insertAdjacentHTML('beforeend', downloadZipBtn);
-                                            break;
-                                        case 'error':
-                                            showStatus(data.message, 'error');
-                                            addResultMessage(data.message, 'error');
-                                            break;
-                                    }
-                                } catch (e) {
-                                    console.error('Error parsing SSE data:', e);
-                                }
-                            }
-                        }
-                    }
-
-                    if (successfulDownloads === 0) {
-                        showStatus('⚠️ No PDFs were downloaded successfully', 'error');
-                        addResultMessage('⚠️ No PDFs were found or downloadable. This could be because:', 'error');
-                        addResultMessage('• Papers may not have direct PDF URLs available', 'info');
-                        addResultMessage('• PDFs may be behind paywalls or require subscriptions', 'info');
-                        addResultMessage('• Some papers may only be available on publisher websites', 'info');
-                    }
-
-                } catch (error) {
-                    console.error('PDF download error:', error);
-                    showStatus('❌ Error during PDF download: ' + error.message, 'error');
-                    addResultMessage('❌ PDF download failed: ' + error.message, 'error');
-                } finally {
-                    setLoading(false);
-                    hideProgress();
-                }
+                // Removed download PDFs functionality
             }
-
-            // Function to download the created ZIP file
-            function downloadZipFile(zipName) {
-                const link = document.createElement('a');
-                link.href = `/api/download-zip/${zipName}`;
-                link.download = 'research_papers.zip';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                showStatus('📥 ZIP file download started!', 'success');
-                addResultMessage('📥 ZIP file download started!', 'success');
-            }
-
-            // Download CSV
-            document.getElementById('downloadBtn').addEventListener('click', function() {
-                if (allFetchedPapers.length > 0) {
-                    downloadCSV(allFetchedPapers);
-                }
-            });
 
             // Clear Results
             document.getElementById('clearBtn').addEventListener('click', function() {
@@ -783,17 +592,39 @@
                             allFetchedPapers = [...papers];
                         }
                         displayPapers(allFetchedPapers);
-                        document.getElementById('downloadBtn').disabled = false;
-                        document.getElementById('fetchMoreBtn').style.display = 'inline-block';
-                        document.getElementById('downloadPDFBtn').style.display = 'inline-block';
 
-                        // Enable the deduplicate and extract abstracts buttons
-                        document.getElementById('deduplicateBtn').style.display = 'inline-block';
-                        document.getElementById('deduplicateBtn').disabled = false;
-                        document.getElementById('extractAbstractsBtn').style.display = 'inline-block';
-                        document.getElementById('extractAbstractsBtn').disabled = true; // Will be enabled after deduplication
-                        document.getElementById('categorizeBtn').style.display = 'inline-block';
-                        document.getElementById('categorizeBtn').disabled = true; // Will be enabled after abstract extraction
+                        // Ensure elements exist before manipulating them
+                        const deduplicateBtn = document.getElementById('deduplicateBtn');
+                        const extractAbstractsBtn = document.getElementById('extractAbstractsBtn');
+                        const downloadBtn = document.getElementById('downloadBtn');
+                        const fetchMoreBtn = document.getElementById('fetchMoreBtn');
+                        const downloadPDFBtn = document.getElementById('downloadPDFBtn');
+
+                        if (downloadBtn) downloadBtn.disabled = false;
+                        if (fetchMoreBtn) fetchMoreBtn.style.display = 'inline-block';
+                        if (downloadPDFBtn) downloadPDFBtn.style.display = 'inline-block';
+
+                        // Enable the Download CSV button
+                        const downloadCSVBtn = document.getElementById('downloadCSVBtn');
+                        if (downloadCSVBtn) {
+                            downloadCSVBtn.style.display = 'inline-block';
+                            downloadCSVBtn.addEventListener('click', () => {
+                                if (allFetchedPapers.length > 0) {
+                                    downloadCSV(allFetchedPapers);
+                                } else {
+                                    showStatus('No papers available to download.', 'error');
+                                }
+                            });
+                        }
+
+                        if (deduplicateBtn) {
+                            deduplicateBtn.style.display = 'inline-block';
+                            deduplicateBtn.disabled = false;
+                        }
+
+                        if (extractAbstractsBtn) {
+                            extractAbstractsBtn.style.display = 'inline-block';
+                        }
 
                         updateProcessSteps(2);
                         showStatus(`✅ Completed! Found ${allFetchedPapers.length} papers.`, 'success');
