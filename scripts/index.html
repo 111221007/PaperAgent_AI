@@ -25,6 +25,7 @@
             border-radius: 12px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
             overflow: hidden;
+            padding: 15px;
         }
 
         .header {
@@ -35,13 +36,13 @@
         }
 
         .header h1 {
-            font-size: 2.5em;
+            font-size: 2em;
             margin-bottom: 10px;
             font-weight: 700;
         }
 
         .header p {
-            font-size: 1.1em;
+            font-size: 1em;
             opacity: 0.9;
         }
 
@@ -58,7 +59,7 @@
             margin-bottom: 8px;
             font-weight: 600;
             color: #374151;
-            font-size: 1.1em;
+            font-size: 1em;
         }
 
         .form-group input[type="text"], .form-group input[type="number"] {
@@ -122,10 +123,10 @@
         }
 
         .btn {
-            padding: 12px 25px;
+            padding: 10px 20px;
             border: none;
             border-radius: 8px;
-            font-size: 1.1em;
+            font-size: 1em;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
@@ -231,7 +232,7 @@
             border: 1px solid #e5e7eb;
             border-radius: 8px;
             padding: 20px;
-            max-height: 400px;
+            max-height: 300px;
             overflow-y: auto;
             font-family: 'Monaco', 'Menlo', monospace;
             font-size: 0.9em;
@@ -302,6 +303,12 @@
 
             .btn {
                 justify-content: center;
+                font-size: 1em;
+                padding: 10px 20px;
+            }
+
+            .results-box {
+                max-height: 300px;
             }
         }
     </style>
@@ -309,7 +316,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔬 Research Paper Fetcher</h1>
+            <h1>🔬 Research Paper Agent</h1>
             <p>Find and download research papers from wide range of collection! - A Free Tool</p>
         </div>
 
@@ -324,22 +331,20 @@
                 <div style="flex:0.1; text-align:center;">→</div>
                 <div class="step" id="step3" style="flex:1; text-align:center; color:#64748b;">3. Extract Abstracts</div>
                 <div style="flex:0.1; text-align:center;">→</div>
-                <div class="step" id="step4" style="flex:1; text-align:center; color:#64748b;">4. Categorize</div>
-                <div style="flex:0.1; text-align:center;">→</div>
-                <div class="step" id="step5" style="flex:1; text-align:center; color:#64748b;">5. Download PDFs</div>
+                <div class="step" id="step4" style="flex:1; text-align:center; color:#64748b;">4. Download CSV</div>
             </div>
 
             <form id="fetchForm">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="keyword">🔍 Primary Keyword *</label>
-                        <input type="text" id="keyword" name="keyword" value = "serverless" placeholder="e.g., serverless, machine learning, blockchain" required
+                        <input type="text" id="keyword" name="keyword" placeholder="e.g., serverless, machine learning, blockchain" required
                             title="Enter the main topic or keyword for your research (e.g., serverless, machine learning, blockchain)">
                         <small style="color:#64748b;">Main topic to search for (e.g., serverless, machine learning, blockchain)</small>
                     </div>
                     <div class="form-group" style="padding-left: 12px; padding-right: 12px;">
                         <label for="additional_keyword">➕ Additional Keyword (optional)</label>
-                        <input type="text" id="additional_keyword" value = "performance" name="additional_keyword" placeholder="e.g., performance, security, optimization"
+                        <input type="text" id="additional_keyword" name="additional_keyword" placeholder="e.g., performance, security, optimization"
                             title="Add a secondary keyword to narrow your search (optional)">
                         <small style="color:#64748b;">Optional: Add a secondary keyword to refine your search (e.g., performance, security)</small>
                     </div>
@@ -347,19 +352,19 @@
                 <div class="form-row" style="display: flex; gap: 20px; align-items: flex-end;">
                     <div class="form-group" style="flex:1; min-width:120px;">
                         <label for="from_year">📅 From Year</label>
-                        <input type="number" id="from_year" name="from_year" min="1900" max="2030" value="2019" required
-                            title="Start year for the publication date range (e.g., 2019)">
+                        <input type="number" id="from_year" name="from_year" min="1900" max="2030" required
+                            title="Enter the starting year for the publication range (e.g., 2019)">
                         <small style="color:#64748b;">Start year for papers (e.g., 2019)</small>
                     </div>
                     <div class="form-group" style="flex:1; min-width:120px;">
                         <label for="to_year">📅 To Year</label>
-                        <input type="number" id="to_year" name="to_year" min="1900" max="2030" value="2025" required
-                            title="End year for the publication date range (e.g., 2025)">
+                        <input type="number" id="to_year" name="to_year" min="1900" max="2030" required
+                            title="Enter the ending year for the publication range (e.g., 2025)">
                         <small style="color:#64748b;">End year for papers (e.g., 2025)</small>
                     </div>
                     <div class="form-group" style="flex:1; min-width:120px;">
                         <label for="total_results">📊 Number of Results</label>
-                        <input type="number" id="total_results" name="total_results" min="1" max="100" value="20" required
+                        <input type="number" id="total_results" name="total_results" min="1" max="100" required
                             title="Maximum number of papers to fetch (1-100)">
                         <small style="color:#64748b;">How many papers to fetch (1-100)</small>
                     </div>
@@ -403,7 +408,7 @@
 
             // Utility: update process steps bar
             function updateProcessSteps(step) {
-                for (let i = 1; i <= 5; i++) {
+                for (let i = 1; i <= 4; i++) {
                     const el = document.getElementById(`step${i}`);
                     if (i < step) {
                         el.style.color = '#10b981'; // green for completed
