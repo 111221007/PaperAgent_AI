@@ -1,0 +1,9 @@
+# Ignore unnecessary files
+.DS_Store
+.next/
+*.png
+*.gz
+*.txt
+*.xml
+__MACOSX/
+
