@@ -54,13 +54,14 @@ def fetch_papers():
         data = request.json
         keyword = data.get('keyword', '').strip()
         additional_keyword = data.get('additional_keyword', '').strip()
+        additional_keyword2 = data.get('additional_keyword2', '').strip()  # NEW FIELD
         from_year = int(data.get('from_year', 2020))
         to_year = int(data.get('to_year', 2025))
         total_results = min(int(data.get('total_results', 5)), 100)
         title_filter = data.get('title_filter', True)
         paper_type_filter = data.get('paper_type_filter', True)
 
-        stream_log(f"[DEBUG] Fetching papers: {keyword} + {additional_keyword}, {from_year}-{to_year}, {total_results} results")
+        stream_log(f"[DEBUG] Fetching papers: {keyword} + {additional_keyword} + {additional_keyword2}, {from_year}-{to_year}, {total_results} results")
 
         papers = []
         session = get_session()
@@ -73,16 +74,19 @@ def fetch_papers():
 
         keyword_lower = keyword.lower().strip()
         additional_keyword_lower = additional_keyword.lower().strip()
+        additional_keyword2_lower = additional_keyword2.lower().strip()  # NEW FIELD
 
         while fetched_count < total_results and processed_count < max_attempts:
             try:
                 remaining = total_results - fetched_count
                 current_rows = min(rows_per_request, remaining * 2)
 
-                if additional_keyword.strip():
-                    url = f'https://api.crossref.org/works?query.title={urllib.parse.quote(keyword)}+{urllib.parse.quote(additional_keyword)}'
-                else:
-                    url = f'https://api.crossref.org/works?query.title={urllib.parse.quote(keyword)}'
+                # Build Crossref API URL
+                url = f'https://api.crossref.org/works?query.title={urllib.parse.quote(keyword)}'
+                if additional_keyword:
+                    url += f'+{urllib.parse.quote(additional_keyword)}'
+                if additional_keyword2:
+                    url += f'+{urllib.parse.quote(additional_keyword2)}'
 
                 url += f'&filter=from-pub-date:{from_year},until-pub-date:{to_year}'
                 if paper_type_filter:
@@ -116,8 +120,8 @@ def fetch_papers():
                         title_lower = title.lower()
                         keyword_in_title = keyword_lower in title_lower
                         additional_in_title = not additional_keyword_lower or additional_keyword_lower in title_lower
-
-                        if not (keyword_in_title and additional_in_title):
+                        additional2_in_title = not additional_keyword2_lower or additional_keyword2_lower in title_lower
+                        if not (keyword_in_title and additional_in_title and additional2_in_title):
                             continue
 
                     paper = extract_paper_info(item, fetched_count + 1)
