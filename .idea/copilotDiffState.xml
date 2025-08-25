@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/fetch_and_save.py">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/fetch_and_save.py" />
+              <option name="originalContent" value="import os&#10;import csv&#10;import requests&#10;&#10;def fetch_csv_data(url):&#10;    response = requests.get(url)&#10;    response.raise_for_status()&#10;    lines = response.text.splitlines()&#10;    reader = csv.reader(lines)&#10;    return list(reader)&#10;&#10;def save_to_csv(new_rows, csv_path):&#10;    file_exists = os.path.isfile(csv_path)&#10;    all_rows = []&#10;&#10;    # Read existing rows if file exists&#10;    if file_exists:&#10;        with open(csv_path, mode='r', newline='', encoding='utf-8') as f:&#10;            reader = csv.reader(f)&#10;            all_rows = list(reader)&#10;        # Remove header from new_rows if file already has header&#10;        if all_rows and new_rows and all_rows[0] == new_rows[0]:&#10;            new_rows = new_rows[1:]&#10;&#10;    # Append new rows&#10;    all_rows.extend(new_rows)&#10;&#10;    # Write all rows back to the CSV&#10;    with open(csv_path, mode='w', newline='', encoding='utf-8') as f:&#10;        writer = csv.writer(f)&#10;        writer.writerows(all_rows)&#10;&#10;if __name__ == &quot;__main__&quot;:&#10;    url = &quot;https://people.sc.fsu.edu/~jburkardt/data/csv/airtravel.csv&quot;&#10;    fetched_data = fetch_csv_data(url)&#10;    save_to_csv(fetched_data, &quot;output.csv&quot;)&#10;    print(&quot;Data saved to output.csv&quot;)&#10;" />
+              <option name="updatedContent" value="import os&#10;import csv&#10;import requests&#10;&#10;def fetch_csv_data(url):&#10;    response = requests.get(url)&#10;    response.raise_for_status()&#10;    lines = response.text.splitlines()&#10;    reader = csv.reader(lines)&#10;    return list(reader)&#10;&#10;def save_to_csv(new_rows, csv_path):&#10;    file_exists = os.path.isfile(csv_path)&#10;    all_rows = []&#10;    seen_ids = set()&#10;&#10;    # Read existing rows if file exists&#10;    if file_exists:&#10;        with open(csv_path, mode='r', newline='', encoding='utf-8') as f:&#10;            reader = csv.reader(f)&#10;            for row in reader:&#10;                if row and row[0] not in seen_ids:&#10;                    all_rows.append(row)&#10;                    seen_ids.add(row[0])&#10;&#10;    # Add new rows, skipping duplicates&#10;    for row in new_rows:&#10;        if row and row[0] not in seen_ids:&#10;            all_rows.append(row)&#10;            seen_ids.add(row[0])&#10;&#10;    # Write all unique rows back to the CSV&#10;    with open(csv_path, mode='w', newline='', encoding='utf-8') as f:&#10;        writer = csv.writer(f)&#10;        writer.writerows(all_rows)&#10;&#10;if __name__ == &quot;__main__&quot;:&#10;    url = &quot;https://people.sc.fsu.edu/~jburkardt/data/csv/airtravel.csv&quot;&#10;    fetched_data = fetch_csv_data(url)&#10;    save_to_csv(fetched_data, &quot;output.csv&quot;)&#10;    print(&quot;Data saved to output.csv&quot;)" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>
