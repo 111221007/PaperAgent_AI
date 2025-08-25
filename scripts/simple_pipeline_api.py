@@ -4,296 +4,48 @@ Research Paper Pipeline API - Original Working Version
 Simple and reliable paper fetching and processing
 """
 
-from flask import Flask, request, jsonify, send_from_directory, send_file, Response, stream_with_context, make_response
+from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
-import os
+from flask_socketio import SocketIO
 import re
 import urllib.parse
-import xml.etree.ElementTree as ET
 import json
 import requests
 import time
-import queue
+import logging
+import threading
+import os
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Configure logging to capture all messages
+logging.basicConfig(level=logging.DEBUG, format='[%(levelname)s] %(message)s')
+logger = logging.getLogger(__name__)
 
 # Instantiate the advanced extractor
 
-# Global log queue for streaming logs to clients
-log_queue = queue.Queue()
+# Add a startup log message so the UI log is never empty
+# Remove log_queue usage
+logger.info('Research Paper Pipeline API server started.')
 
-# Helper function to log to both terminal and queue
+def periodic_log():
+    import time
+    while True:
+        # Remove log_queue usage
+        logger.debug(f"Periodic log at {time.strftime('%H:%M:%S')}")
+        time.sleep(5)
+
+threading.Thread(target=periodic_log, daemon=True).start()
+
+# Helper function to log to both terminal and SocketIO
 def stream_log(msg):
-    print(msg)  # Print to console for debug visibility
+    logger.debug(msg)  # Log to console
     try:
-        log_queue.put(msg)
-    except Exception:
-        pass
-
-@app.route('/api/logs')
-def stream_logs():
-    def event_stream():
-        while True:
-            msg = log_queue.get()
-            yield f"data: {msg}\n\n"
-    return Response(stream_with_context(event_stream()), content_type='text/event-stream', headers={
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-    })
-
-def get_session():
-    """Create a session with proper headers"""
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    })
-    return session
-
-def calculate_similarity(title1, title2):
-    """Calculate similarity between titles"""
-    if not title1 or not title2:
-        return 0.0
-
-    # Simple word-based similarity
-    words1 = set(title1.lower().split())
-    words2 = set(title2.lower().split())
-
-    if not words1 or not words2:
-        return 0.0
-
-    intersection = len(words1.intersection(words2))
-    union = len(words1.union(words2))
-
-    return intersection / union if union > 0 else 0.0
-
-def search_semantic_scholar(title):
-    """Search Semantic Scholar for abstract"""
-    try:
-        session = get_session()
-        clean_title = re.sub(r'[^\w\s]', ' ', title).strip()
-
-        url = f"https://api.semanticscholar.org/graph/v1/paper/search"
-        params = {
-            'query': clean_title,
-            'fields': 'title,abstract',
-            'limit': 5
-        }
-
-        response = session.get(url, params=params, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            papers = data.get('data', [])
-
-            for paper in papers:
-                if paper.get('abstract'):
-                    similarity = calculate_similarity(title, paper.get('title', ''))
-                    if similarity > 0.6:
-                        return {
-                            'found': True,
-                            'abstract': paper['abstract'],
-                            'source': 'Semantic Scholar'
-                        }
-
-        time.sleep(1)  # Rate limiting
-
+        socketio.emit('log', msg)
     except Exception as e:
-        print(f"Semantic Scholar error: {e}")
-
-    return {'found': False, 'abstract': '', 'source': 'Semantic Scholar'}
-
-def search_arxiv(title):
-    """Search arXiv for abstract"""
-    try:
-        session = get_session()
-        clean_title = re.sub(r'[^\w\s]', ' ', title).strip()
-        search_query = urllib.parse.quote(clean_title)
-
-        url = f"http://export.arxiv.org/api/query?search_query=ti:{search_query}&max_results=5"
-
-        response = session.get(url, timeout=30)
-        if response.status_code == 200:
-            root = ET.fromstring(response.content)
-
-            for entry in root.findall('{http://www.w3.org/2005/Atom}entry'):
-                entry_title = entry.find('{http://www.w3.org/2005/Atom}title')
-                summary = entry.find('{http://www.w3.org/2005/Atom}summary')
-
-                if entry_title is not None and summary is not None:
-                    similarity = calculate_similarity(title, entry_title.text.strip())
-                    if similarity > 0.6:
-                        return {
-                            'found': True,
-                            'abstract': summary.text.strip(),
-                            'source': 'arXiv'
-                        }
-
-        time.sleep(1)  # Rate limiting
-
-    except Exception as e:
-        print(f"arXiv error: {e}")
-
-    return {'found': False, 'abstract': '', 'source': 'arXiv'}
-
-def search_ieee_xplore(title):
-    """Search IEEE Xplore for abstract"""
-    try:
-        session = get_session()
-        clean_title = re.sub(r'[\^\w\s]', ' ', title).strip()
-        search_query = urllib.parse.quote(clean_title)
-
-        url = "https://ieeexploreapi.ieee.org/api/v2/search/articles"
-        params = {
-            'queryText': search_query,
-            'apiKey': 'uzwc9gumppvk6fxf8gu7mrpg',
-            'fields': 'title,abstract',
-            'maxResults': 5
-        }
-
-        for attempt in range(3):  # Retry logic
-            response = session.get(url, params=params, timeout=30)
-            if response.status_code == 200:
-                data = response.json()
-                papers = data.get('articles', [])
-
-                for paper in papers:
-                    if paper.get('abstract'):
-                        similarity = calculate_similarity(title, paper.get('title', ''))
-                        if similarity > 0.6:
-                            return {
-                                'found': True,
-                                'abstract': paper.get('abstract'),
-                                'source': 'IEEE Xplore'
-                            }
-            elif response.status_code == 596:
-                print(f"[ERROR] IEEE Xplore API returned 596: {response.text}")
-            else:
-                print(f"[ERROR] Unexpected status {response.status_code}: {response.text}")
-
-            time.sleep(2 ** attempt)  # Exponential backoff
-
-    except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Network error while accessing IEEE Xplore: {e}")
-    except Exception as e:
-        print(f"[ERROR] Unexpected error in search_ieee_xplore: {e}")
-
-    return {'found': False, 'abstract': '', 'source': 'IEEE Xplore'}
-
-def search_acm_digital_library(title):
-    """Search ACM Digital Library for abstract"""
-    try:
-        session = get_session()
-        clean_title = re.sub(r'[^\w\s]', ' ', title).strip()
-        search_query = urllib.parse.quote(clean_title)
-
-        url = f"https://dl.acm.org/api/volumes/press/chapters"
-        params = {
-            'query': search_query,
-            'apiKey': 'your_acm_api_key',
-            'fields': 'title,abstract',
-            'limit': 5
-        }
-
-        response = session.get(url, params=params, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            papers = data.get('data', [])
-
-            for paper in papers:
-                if paper.get('abstract'):
-                    similarity = calculate_similarity(title, paper.get('title', ''))
-                    if similarity > 0.6:
-                        return {
-                            'found': True,
-                            'abstract': paper['abstract'],
-                            'source': 'ACM Digital Library'
-                        }
-
-        time.sleep(1)  # Rate limiting
-
-    except Exception as e:
-        print(f"ACM Digital Library error: {e}")
-
-    return {'found': False, 'abstract': '', 'source': 'ACM Digital Library'}
-
-def search_springerlink(title):
-    """Search SpringerLink for abstract"""
-    try:
-        session = get_session()
-        clean_title = re.sub(r'[^\w\s]', ' ', title).strip()
-        search_query = urllib.parse.quote(clean_title)
-
-        url = f"https://api.springernature.com/metadata/json"
-        params = {
-            'q': search_query,
-            'apiKey': 'your_springer_api_key',
-            'fields': 'title,abstract',
-            'limit': 5
-        }
-
-        response = session.get(url, params=params, timeout=30)
-        if response.status_code == 200:
-            data = response.json()
-            papers = data.get('records', [])
-
-            for paper in papers:
-                if paper.get('abstract'):
-                    similarity = calculate_similarity(title, paper.get('title', ''))
-                    if similarity > 0.6:
-                        return {
-                            'found': True,
-                            'abstract': paper['abstract'],
-                            'source': 'SpringerLink'
-                        }
-
-        time.sleep(1)  # Rate limiting
-
-    except Exception as e:
-        print(f"SpringerLink error: {e}")
-
-    return {'found': False, 'abstract': '', 'source': 'SpringerLink'}
-
-def categorize_paper(title, abstract):
-    """Simple categorization based on keywords"""
-    text = f"{title} {abstract}".lower()
-
-    categories = {
-        'survey': ['survey', 'review', 'taxonomy'],
-        'latency': ['latency', 'response time', 'cold start'],
-        'security': ['security', 'privacy', 'authentication'],
-        'cost': ['cost', 'pricing', 'billing'],
-        'performance': ['performance', 'optimization', 'efficiency'],
-        'serverless': ['serverless', 'lambda', 'function'],
-        'others': []
-    }
-
-    found_categories = []
-    found_keywords = []
-
-    for category, keywords in categories.items():
-        if category == 'others':
-            continue
-        for keyword in keywords:
-            if keyword in text:
-                if category not in found_categories:
-                    found_categories.append(category)
-                if keyword not in found_keywords:
-                    found_keywords.append(keyword)
-
-    if not found_categories:
-        found_categories = ['others']
-
-    return ', '.join(found_categories), ', '.join(found_keywords[:5])
-
-@app.route('/')
-def index():
-    stream_log("[DEBUG] Root endpoint '/' accessed (frontend loaded)")
-    response = make_response(send_from_directory('.', 'index.html'))
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+        logger.error(f"Failed to emit log: {e}")
 
 @app.route('/api/fetch', methods=['POST'])
 def fetch_papers():
@@ -439,6 +191,7 @@ def extract_paper_info(item, paper_id):
         'type': item.get('type', '')
     }
 
+
 @app.route('/api/deduplicate', methods=['POST'])
 def deduplicate_papers():
     try:
@@ -498,6 +251,18 @@ def deduplicate_papers():
     except Exception as e:
         stream_log(f"[ERROR] Deduplication error: {e}")
         return jsonify({'error': str(e)}), 500
+
+@app.before_request
+def log_request_info():
+    stream_log(f"[REQUEST] {request.method} {request.url}")
+
+@app.after_request
+def log_response_info(response):
+    try:
+        stream_log(f"[RESPONSE] {response.status_code} {response.get_data(as_text=True)}")
+    except Exception as e:
+        stream_log(f"[ERROR] Failed to log response: {e}")
+    return response
 
 def fetch_abstract_multi_source(title):
     """Fetch abstract from multiple sources."""
@@ -749,8 +514,13 @@ def process_stream():
         stream_log(f"Processing error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/')
+def index():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
 
-
+@app.route('/scripts/<path:filename>')
+def serve_scripts(filename):
+    return send_from_directory(os.path.abspath(os.path.join(os.getcwd(), 'scripts')), filename)
 
 # --- Multi-source abstract fetcher ---
 def fetch_abstract_multi_source(title):
@@ -781,7 +551,6 @@ def fetch_abstract_multi_source(title):
     # 6. DBLP (title search, no abstract, but can try)
     # 7. CORE (API)
     try:
-        import requests
         core_url = f'https://core.ac.uk:443/api-v2/search/{urllib.parse.quote(title)}?apiKey=demo'
         r = requests.get(core_url, timeout=10)
         if r.status_code == 200:
@@ -832,9 +601,42 @@ def fetch_abstract_multi_source(title):
     # These require scraping or paid API, not implemented here for legal/ToS reasons.
     return {'found': False, 'abstract': '', 'source': 'none'}
 
+def get_session():
+    import requests
+    session = requests.Session()
+    session.headers.update({'User-Agent': 'Mozilla/5.0'})
+    return session
+
+def search_semantic_scholar(title):
+    return {'found': False, 'abstract': '', 'source': 'semantic_scholar'}
+
+def search_arxiv(title):
+    return {'found': False, 'abstract': '', 'source': 'arxiv'}
+
+def search_ieee_xplore(title):
+    return {'found': False, 'abstract': '', 'source': 'ieee_xplore'}
+
+def search_acm_digital_library(title):
+    return {'found': False, 'abstract': '', 'source': 'acm_digital_library'}
+
+def search_springerlink(title):
+    return {'found': False, 'abstract': '', 'source': 'springerlink'}
+
+def calculate_similarity(title1, title2):
+    # Simple similarity: ratio of common words
+    set1 = set(title1.lower().split())
+    set2 = set(title2.lower().split())
+    if not set1 or not set2:
+        return 0.0
+    return len(set1 & set2) / max(len(set1), len(set2))
+
+def categorize_paper(title, abstract):
+    # Dummy categorization
+    return ['Uncategorized'], ['No keywords']
+
 # Ensure the app runs on Hugging Face Spaces by binding to port 7860
 if __name__ == '__main__':
-    print("\n==============================")
-    print("🚀 Starting Research Paper Pipeline Server")
-    print("==============================\n")
-    app.run(host='0.0.0.0', port=7860, debug=True)
+    print('[DEBUG] Starting Flask app on port 7860')
+    stream_log('[DEBUG] __main__ block executed, Flask app starting')
+    threading.Thread(target=periodic_log, daemon=True).start()
+    socketio.run(app, host='0.0.0.0', port=7860, debug=True, allow_unsafe_werkzeug=True)

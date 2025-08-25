@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #000000 20%, #000000 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -33,6 +33,7 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
@@ -44,6 +45,49 @@
         .header p {
             font-size: 1em;
             opacity: 0.9;
+        }
+
+        .header .top-right {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        .bottom-right.info {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(128, 128, 128, 0.2); /* Slight gray background */
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px; /* Added margin on top */
+        }
+
+        .bottom-right.info:hover {
+            background-color: rgba(128, 128, 128, 0.4); /* Darker gray on hover */
+        }
+
+        .bottom-center.info {
+            position: absolute;
+            bottom: 10px; /* Move the info to the bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(128, 128, 128, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 500;
+            cursor: pointer;
+        }
         }
 
         .form-container {
@@ -292,6 +336,82 @@
             margin-bottom: 5px;
         }
 
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        footer::after {
+            content: "Developed in Taiwan";
+            display: block;
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        /* Add hover effect for Info */
+        .info {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+        }
+
+        .info:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .tooltip {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            top: 125%; /* Changed from bottom to top */
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: 100%; /* Changed from top to bottom */
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: transparent transparent #555 transparent;
+        }
+
+        /* Green debug log box */
+        .debug-log-box {
+            background: #e6fbe6;
+            color: #15803d;
+            border: 1.5px solid #22c55e;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 18px 0 0 0;
+            font-family: Monaco, Menlo, monospace;
+            font-size: 1em;
+            min-height: 60px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(34,197,94,0.08);
+        }
+        .debug-log-box .debug-line {
+            margin-bottom: 4px;
+            font-size: 0.98em;
+            font-weight: 500;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -318,13 +438,16 @@
         <div class="header">
             <h1>🔬 Research Paper Agent</h1>
             <p>Find and download research papers from wide range of collection! - A Free Tool</p>
+            <div class="bottom-center info">Info
+                <div class="tooltip">Developed by CM Reddy in Taiwan</div>
+            </div>
         </div>
 
         <div class="form-container">
             <!-- Removed Vercel notice as requested -->
 
             <!-- Process Steps Bar -->
-            <div id="processSteps" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div id="processSteps" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-top: 10px;">
                 <div class="step" id="step1" style="flex:1; text-align:center; color:#2563eb; font-weight:600;">1. Fetch Papers</div>
                 <div style="flex:0.1; text-align:center;">→</div>
                 <div class="step" id="step2" style="flex:1; text-align:center; color:#64748b;">2. Deduplicate</div>
@@ -389,658 +512,663 @@
             </form>
         </div>
 
-        <div class="status" id="statusMessage"></div>
-        <div class="results-container" id="resultsContainer">
-            <h3>📄 Fetch Results</h3>
-            <div class="results-box" id="resultsBox"></div>
+        <div id="statusMessage" class="status info" style="display:none;"></div>
+        <div id="resultsContainer" class="results-container" style="display:block;">
+            <div id="resultsBox" class="results-box"></div>
         </div>
-
-        <h2>STATUS</h2>
-        <pre id="log" style="background:#111;color:#0f0;padding:1em;height:400px;overflow:auto;font-size:14px;"></pre>
+        <!-- Green Debug Log Box -->
+        <div id="debugLogBox" class="debug-log-box"></div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            let isLoading = false;
-            let fetchedPapers = [];
-            let allFetchedPapers = [];
-            let processStep = 1;
+    document.addEventListener('DOMContentLoaded', function() {
+        let isLoading = false;
+        let fetchedPapers = [];
+        let allFetchedPapers = [];
+        let processStep = 1;
 
-            // Utility: update process steps bar
-            function updateProcessSteps(step) {
-                for (let i = 1; i <= 4; i++) {
-                    const el = document.getElementById(`step${i}`);
-                    if (i < step) {
-                        el.style.color = '#10b981'; // green for completed
-                        el.style.fontWeight = '700';
-                    } else if (i === step) {
-                        el.style.color = '#2563eb'; // blue for current
-                        el.style.fontWeight = '700';
-                    } else {
-                        el.style.color = '#64748b'; // gray for pending
-                        el.style.fontWeight = '600';
-                    }
+        // Utility: update process steps bar
+        function updateProcessSteps(step) {
+            for (let i = 1; i <= 4; i++) {
+                const el = document.getElementById(`step${i}`);
+                if (i < step) {
+                    el.style.color = '#10b981'; // green for completed
+                    el.style.fontWeight = '700';
+                } else if (i === step) {
+                    el.style.color = '#2563eb'; // blue for current
+                    el.style.fontWeight = '700';
+                } else {
+                    el.style.color = '#64748b'; // gray for pending
+                    el.style.fontWeight = '600';
                 }
             }
+        }
 
-            // Fetch Papers
-            document.getElementById('fetchForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                if (isLoading) return;
+        // Fetch Papers
+        document.getElementById('fetchForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (isLoading) return;
 
-                // Validate year range
-                const fromYear = parseInt(document.getElementById('from_year').value);
-                const toYear = parseInt(document.getElementById('to_year').value);
+            // Validate year range
+            const fromYear = parseInt(document.getElementById('from_year').value);
+            const toYear = parseInt(document.getElementById('to_year').value);
 
-                if (fromYear > toYear) {
-                    alert('From Year cannot be greater than To Year');
-                    return;
-                }
+            if (fromYear > toYear) {
+                alert('From Year cannot be greater than To Year');
+                return;
+            }
 
-                const formData = new FormData(e.target);
-                const data = Object.fromEntries(formData.entries());
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
 
-                // Set default values for removed checkboxes
-                data.title_filter = true; // Default to filtering by title
-                data.paper_type_filter = true; // Default to journal and conference papers only
+            // Set default values for removed checkboxes
+            data.title_filter = true; // Default to filtering by title
+            data.paper_type_filter = true; // Default to journal and conference papers only
 
-                updateProcessSteps(1);
-                // Fetch papers
-                await fetchPapers(data, false);
-            });
+            updateProcessSteps(1);
+            // Fetch papers
+            await fetchPapers(data, false);
+        });
 
-            // Fetch More Papers
-            document.getElementById('fetchMoreBtn').addEventListener('click', async function() {
-                if (isLoading) return;
-                const formData = new FormData(document.getElementById('fetchForm'));
-                const data = Object.fromEntries(formData.entries());
-                await fetchPapers(data, true);
-            });
+        // Fetch More Papers
+        document.getElementById('fetchMoreBtn').addEventListener('click', async function() {
+            if (isLoading) return;
+            const formData = new FormData(document.getElementById('fetchForm'));
+            const data = Object.fromEntries(formData.entries());
+            await fetchPapers(data, true);
+        });
 
-            // Deduplicate Papers
-            document.getElementById('deduplicateBtn').addEventListener('click', async function() {
-                if (isLoading || !allFetchedPapers.length) return;
+        // Deduplicate Papers
+        document.getElementById('deduplicateBtn').addEventListener('click', async function() {
+            if (isLoading || !allFetchedPapers.length) return;
 
-                setLoading(true);
-                showProgress();
-                showStatus('🔧 Deduplicating papers...', 'info');
-                updateProcessSteps(2);
+            setLoading(true);
+            showProgress();
+            showStatus('🔧 Deduplicating papers...', 'info');
+            updateProcessSteps(2);
 
-                try {
-                    const response = await fetch('/api/deduplicate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ papers: allFetchedPapers })
-                    });
+            try {
+                const response = await fetch('/api/deduplicate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ papers: allFetchedPapers })
+                });
 
-                    if (!response.ok) throw new Error('Deduplication failed');
+                if (!response.ok) throw new Error('Deduplication failed');
 
-                    const result = await response.json();
-                    allFetchedPapers = result.papers;
+                const result = await response.json();
+                allFetchedPapers = result.papers;
 
-                    displayPapers(allFetchedPapers);
-                    document.getElementById('deduplicateBtn').disabled = true;
-                    document.getElementById('extractAbstractsBtn').disabled = false;
-                    updateProcessSteps(3);
-                    let removed = 0;
-                    if ('removed' in result && typeof result.removed === 'number') {
-                        removed = result.removed;
-                    } else if ('removed_count' in result && typeof result.removed_count === 'number') {
-                        removed = result.removed_count;
-                    } else if (result.message) {
-                        const match = result.message.match(/(\d+)\s+duplicates removed/);
-                        if (match) removed = parseInt(match[1], 10);
-                    }
-                    showStatus(`✅ Deduplication complete! ${removed} duplicates removed. ${allFetchedPapers.length} unique papers remaining.`, 'success');
-                } catch (error) {
-                    showStatus('❌ Error during deduplication: ' + error.message, 'error');
-                    console.error('Deduplication error:', error);
-                } finally {
-                    setLoading(false);
-                    hideProgress();
-                }
-            });
-
-            // Extract Abstracts
-            document.getElementById('extractAbstractsBtn').addEventListener('click', async function() {
-                if (isLoading || !allFetchedPapers.length) return;
-
-                setLoading(true);
-                showProgress();
-                showStatus('📄 Extracting abstracts from multiple sources...', 'info');
+                displayPapers(allFetchedPapers);
+                document.getElementById('deduplicateBtn').disabled = true;
+                document.getElementById('extractAbstractsBtn').disabled = false;
                 updateProcessSteps(3);
-
-                try {
-                    const response = await fetch('/api/extract-abstracts', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ papers: allFetchedPapers })
-                    });
-
-                    if (!response.ok) throw new Error('Abstract extraction failed');
-
-                    const result = await response.json();
-                    allFetchedPapers = result.papers;
-
-                    displayPapers(allFetchedPapers);
-                    document.getElementById('extractAbstractsBtn').disabled = true;
-                    updateProcessSteps(4);
-                    showStatus(`✅ Abstract extraction complete! Found abstracts for ${result.found} out of ${allFetchedPapers.length} papers.`, 'success');
-                } catch (error) {
-                    showStatus('❌ Error during abstract extraction: ' + error.message, 'error');
-                    console.error('Abstract extraction error:', error);
-                } finally {
-                    setLoading(false);
-                    hideProgress();
+                let removed = 0;
+                if ('removed' in result && typeof result.removed === 'number') {
+                    removed = result.removed;
+                } else if ('removed_count' in result && typeof result.removed_count === 'number') {
+                    removed = result.removed_count;
+                } else if (result.message) {
+                    const match = result.message.match(/(\d+)\s+duplicates removed/);
+                    if (match) removed = parseInt(match[1], 10);
                 }
-            });
-
-            // Removed Download PDFs button event listener
-
-            async function downloadPDFsWithProgress(papers) {
-                // Removed download PDFs functionality
+                showStatus(`✅ Deduplication complete! ${removed} duplicates removed. ${allFetchedPapers.length} unique papers remaining.`, 'success');
+            } catch (error) {
+                showStatus('❌ Error during deduplication: ' + error.message, 'error');
+                console.error('Deduplication error:', error);
+            } finally {
+                setLoading(false);
+                hideProgress();
             }
+        });
 
-            // Clear Results
-            document.getElementById('clearBtn').addEventListener('click', function() {
-                clearResults();
-                document.getElementById('downloadBtn').disabled = true;
-                document.getElementById('downloadPDFBtn').style.display = 'none';
-                document.getElementById('fetchMoreBtn').style.display = 'none';
-                allFetchedPapers = [];
+        // Extract Abstracts
+        document.getElementById('extractAbstractsBtn').addEventListener('click', async function() {
+            if (isLoading || !allFetchedPapers.length) return;
+
+            setLoading(true);
+            showProgress();
+            showStatus('📄 Extracting abstracts from multiple sources...', 'info');
+            updateProcessSteps(3);
+
+            try {
+                const response = await fetch('/api/extract-abstracts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ papers: allFetchedPapers })
+                });
+
+                if (!response.ok) throw new Error('Abstract extraction failed');
+
+                const result = await response.json();
+                allFetchedPapers = result.papers;
+
+                displayPapers(allFetchedPapers);
+                document.getElementById('extractAbstractsBtn').disabled = true;
+                updateProcessSteps(4);
+                showStatus(`✅ Abstract extraction complete! Found abstracts for ${result.found} out of ${allFetchedPapers.length} papers.`, 'success');
+            } catch (error) {
+                showStatus('❌ Error during abstract extraction: ' + error.message, 'error');
+                console.error('Abstract extraction error:', error);
+            } finally {
+                setLoading(false);
+                hideProgress();
+            }
+        });
+
+        // Removed Download PDFs button event listener
+
+        async function downloadPDFsWithProgress(papers) {
+            // Removed download PDFs functionality
+        }
+
+        // Clear Results
+        document.getElementById('clearBtn').addEventListener('click', function() {
+            clearResults();
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('downloadPDFBtn').style.display = 'none';
+            document.getElementById('fetchMoreBtn').style.display = 'none';
+            allFetchedPapers = [];
+            fetchedPapers = [];
+            updateProcessSteps(1);
+            showStatus('Cleared. Ready to fetch papers...', 'info');
+        });
+
+        // Main fetch logic
+        async function fetchPapers(data, isMore) {
+            setLoading(true);
+            showProgress();
+            showStatus('🔍 Starting paper fetch...', 'info');
+            if (!isMore) {
                 fetchedPapers = [];
-                updateProcessSteps(1);
-                showStatus('Cleared. Ready to fetch papers...', 'info');
-            });
+                allFetchedPapers = [];
+            }
+            try {
+                // Call backend API instead of CrossRef directly
+                const response = await fetch('/api/fetch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
 
-            // Main fetch logic
-            async function fetchPapers(data, isMore) {
-                setLoading(true);
-                showProgress();
-                showStatus('🔍 Starting paper fetch...', 'info');
-                if (!isMore) {
-                    fetchedPapers = [];
-                    allFetchedPapers = [];
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                try {
-                    // Call backend API instead of CrossRef directly
-                    const response = await fetch('/api/fetch', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
-                    });
 
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to fetch papers');
+                }
+
+                const papers = result.papers || [];
+
+                if (papers && papers.length > 0) {
+                    fetchedPapers = papers;
+                    if (isMore) {
+                        // Deduplicate by title/DOI
+                        const seen = new Set(allFetchedPapers.map(p => p.doi + p.title));
+                        for (const p of papers) {
+                            if (!seen.has(p.doi + p.title)) {
+                                allFetchedPapers.push(p);
+                                seen.add(p.doi + p.title);
+                            }
+                        }
+                    } else {
+                        allFetchedPapers = [...papers];
+                    }
+                    displayPapers(allFetchedPapers);
+
+                    // Ensure elements exist before manipulating them
+                    const deduplicateBtn = document.getElementById('deduplicateBtn');
+                    const extractAbstractsBtn = document.getElementById('extractAbstractsBtn');
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    const fetchMoreBtn = document.getElementById('fetchMoreBtn');
+                    const downloadPDFBtn = document.getElementById('downloadPDFBtn');
+
+                    if (downloadBtn) downloadBtn.disabled = false;
+                    if (fetchMoreBtn) fetchMoreBtn.style.display = 'inline-block';
+                    if (downloadPDFBtn) downloadPDFBtn.style.display = 'inline-block';
+
+                    // Enable the Download CSV button
+                    const downloadCSVBtn = document.getElementById('downloadCSVBtn');
+                    if (downloadCSVBtn) {
+                        downloadCSVBtn.style.display = 'inline-block';
+                        // Remove any existing event listeners to prevent duplicates
+                        downloadCSVBtn.replaceWith(downloadCSVBtn.cloneNode(true));
+                        const newDownloadCSVBtn = document.getElementById('downloadCSVBtn');
+                        newDownloadCSVBtn.addEventListener('click', () => {
+                            if (allFetchedPapers.length > 0) {
+                                downloadCSV(allFetchedPapers);
+                            } else {
+                                showStatus('No papers available to download.', 'error');
+                            }
+                        });
+                    }
+
+                    if (deduplicateBtn) {
+                        deduplicateBtn.style.display = 'inline-block';
+                        deduplicateBtn.disabled = false;
+                    }
+
+                    if (extractAbstractsBtn) {
+                        extractAbstractsBtn.style.display = 'inline-block';
+                    }
+
+                    updateProcessSteps(2);
+                    showStatus(`✅ Completed! Found ${allFetchedPapers.length} papers.`, 'success');
+                } else {
+                    showStatus('❌ No papers found matching your criteria', 'error');
+                }
+            } catch (error) {
+                showStatus('Error occurred during fetch: ' + error.message, 'error');
+                console.error('Fetch error:', error);
+            } finally {
+                setLoading(false);
+                hideProgress();
+            }
+        }
+
+        async function searchCrossrefAPI(keyword, additionalKeyword, fromYear, toYear, totalResults, titleFilter, paperTypeFilter) {
+            const papers = [];
+            const rowsPerRequest = 20;
+            let offset = 0;
+            let fetchedCount = 0;
+            const maxAttempts = totalResults * 3;
+            let processedCount = 0;
+
+            const keywordLower = keyword.toLowerCase().trim();
+            const additionalKeywordLower = additionalKeyword.toLowerCase().trim();
+
+            while (fetchedCount < totalResults && processedCount < maxAttempts) {
+                try {
+                    const remaining = totalResults - fetchedCount;
+                    const currentRows = Math.min(rowsPerRequest, remaining * 2);
+
+                    // Build Crossref API URL
+                    let url = 'https://api.crossref.org/works?';
+
+                    if (additionalKeyword.trim()) {
+                        url += `query.title=${encodeURIComponent(keyword)}+${encodeURIComponent(additionalKeyword)}`;
+                    } else {
+                        url += `query.title=${encodeURIComponent(keyword)}`;
+                    }
+
+                    url += `&filter=from-pub-date:${fromYear},until-pub-date:${toYear}`;
+
+                    if (paperTypeFilter) {
+                        url += ',type:journal-article,type:proceedings-article';
+                    }
+
+                    url += `&rows=${currentRows}&offset=${offset}&sort=relevance`;
+
+                    addResultMessage(`📡 Fetching papers ${offset + 1} to ${offset + currentRows}...`, 'info');
+
+                    const response = await fetch(url);
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
 
-                    const result = await response.json();
+                    const data = await response.json();
+                    const items = data.message?.items || [];
 
-                    if (!result.success) {
-                        throw new Error(result.error || 'Failed to fetch papers');
-                    }
-
-                    const papers = result.papers || [];
-
-                    if (papers && papers.length > 0) {
-                        fetchedPapers = papers;
-                        if (isMore) {
-                            // Deduplicate by title/DOI
-                            const seen = new Set(allFetchedPapers.map(p => p.doi + p.title));
-                            for (const p of papers) {
-                                if (!seen.has(p.doi + p.title)) {
-                                    allFetchedPapers.push(p);
-                                    seen.add(p.doi + p.title);
-                                }
-                            }
-                        } else {
-                            allFetchedPapers = [...papers];
-                        }
-                        displayPapers(allFetchedPapers);
-
-                        // Ensure elements exist before manipulating them
-                        const deduplicateBtn = document.getElementById('deduplicateBtn');
-                        const extractAbstractsBtn = document.getElementById('extractAbstractsBtn');
-                        const downloadBtn = document.getElementById('downloadBtn');
-                        const fetchMoreBtn = document.getElementById('fetchMoreBtn');
-                        const downloadPDFBtn = document.getElementById('downloadPDFBtn');
-
-                        if (downloadBtn) downloadBtn.disabled = false;
-                        if (fetchMoreBtn) fetchMoreBtn.style.display = 'inline-block';
-                        if (downloadPDFBtn) downloadPDFBtn.style.display = 'inline-block';
-
-                        // Enable the Download CSV button
-                        const downloadCSVBtn = document.getElementById('downloadCSVBtn');
-                        if (downloadCSVBtn) {
-                            downloadCSVBtn.style.display = 'inline-block';
-                            // Remove any existing event listeners to prevent duplicates
-                            downloadCSVBtn.replaceWith(downloadCSVBtn.cloneNode(true));
-                            const newDownloadCSVBtn = document.getElementById('downloadCSVBtn');
-                            newDownloadCSVBtn.addEventListener('click', () => {
-                                if (allFetchedPapers.length > 0) {
-                                    downloadCSV(allFetchedPapers);
-                                } else {
-                                    showStatus('No papers available to download.', 'error');
-                                }
-                            });
-                        }
-
-                        if (deduplicateBtn) {
-                            deduplicateBtn.style.display = 'inline-block';
-                            deduplicateBtn.disabled = false;
-                        }
-
-                        if (extractAbstractsBtn) {
-                            extractAbstractsBtn.style.display = 'inline-block';
-                        }
-
-                        updateProcessSteps(2);
-                        showStatus(`✅ Completed! Found ${allFetchedPapers.length} papers.`, 'success');
-                    } else {
-                        showStatus('❌ No papers found matching your criteria', 'error');
-                    }
-                } catch (error) {
-                    showStatus('Error occurred during fetch: ' + error.message, 'error');
-                    console.error('Fetch error:', error);
-                } finally {
-                    setLoading(false);
-                    hideProgress();
-                }
-            }
-
-            async function searchCrossrefAPI(keyword, additionalKeyword, fromYear, toYear, totalResults, titleFilter, paperTypeFilter) {
-                const papers = [];
-                const rowsPerRequest = 20;
-                let offset = 0;
-                let fetchedCount = 0;
-                const maxAttempts = totalResults * 3;
-                let processedCount = 0;
-
-                const keywordLower = keyword.toLowerCase().trim();
-                const additionalKeywordLower = additionalKeyword.toLowerCase().trim();
-
-                while (fetchedCount < totalResults && processedCount < maxAttempts) {
-                    try {
-                        const remaining = totalResults - fetchedCount;
-                        const currentRows = Math.min(rowsPerRequest, remaining * 2);
-
-                        // Build Crossref API URL
-                        let url = 'https://api.crossref.org/works?';
-
-                        if (additionalKeyword.trim()) {
-                            url += `query.title=${encodeURIComponent(keyword)}+${encodeURIComponent(additionalKeyword)}`;
-                        } else {
-                            url += `query.title=${encodeURIComponent(keyword)}`;
-                        }
-
-                        url += `&filter=from-pub-date:${fromYear},until-pub-date:${toYear}`;
-
-                        if (paperTypeFilter) {
-                            url += ',type:journal-article,type:proceedings-article';
-                        }
-
-                        url += `&rows=${currentRows}&offset=${offset}&sort=relevance`;
-
-                        addResultMessage(`📡 Fetching papers ${offset + 1} to ${offset + currentRows}...`, 'info');
-
-                        const response = await fetch(url);
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-
-                        const data = await response.json();
-                        const items = data.message?.items || [];
-
-                        if (items.length === 0) {
-                            addResultMessage('⚠️ No more papers found', 'warning');
-                            break;
-                        }
-
-                        // Process each paper
-                        for (const item of items) {
-                            processedCount++;
-
-                            if (fetchedCount >= totalResults) break;
-
-                            // Extract title for filtering
-                            let title = '';
-                            if (item.title && item.title.length > 0) {
-                                title = Array.isArray(item.title) ? item.title[0] : item.title;
-                            }
-
-                            // Title filtering if enabled
-                            if (titleFilter) {
-                                const titleLower = title.toLowerCase();
-                                const keywordInTitle = titleLower.includes(keywordLower);
-                                const additionalInTitle = !additionalKeywordLower || titleLower.includes(additionalKeywordLower);
-
-                                if (!(keywordInTitle && additionalInTitle)) {
-                                    continue;
-                                }
-                            }
-
-                            const paper = extractPaperInfo(item, fetchedCount + 1);
-                            papers.push(paper);
-                            fetchedCount++;
-
-                            if (fetchedCount % 5 === 0 || fetchedCount === totalResults) {
-                                addResultMessage(`   ✅ Found ${fetchedCount}/${totalResults} qualifying papers`, 'success');
-                            }
-                        }
-
-                        offset += currentRows;
-
-                        // Rate limiting
-                        await new Promise(resolve => setTimeout(resolve, 200));
-
-                    } catch (error) {
-                        addResultMessage(`❌ Error fetching data: ${error.message}`, 'error');
+                    if (items.length === 0) {
+                        addResultMessage('⚠️ No more papers found', 'warning');
                         break;
                     }
-                }
 
-                return papers;
-            }
+                    // Process each paper
+                    for (const item of items) {
+                        processedCount++;
 
-            function extractPaperInfo(item, paperId) {
-                // Extract authors
-                const authors = [];
-                if (item.author) {
-                    for (const author of item.author) {
-                        if (author.given && author.family) {
-                            authors.push(`${author.given} ${author.family}`);
-                        } else if (author.family) {
-                            authors.push(author.family);
+                        if (fetchedCount >= totalResults) break;
+
+                        // Extract title for filtering
+                        let title = '';
+                        if (item.title && item.title.length > 0) {
+                            title = Array.isArray(item.title) ? item.title[0] : item.title;
+                        }
+
+                        // Title filtering if enabled
+                        if (titleFilter) {
+                            const titleLower = title.toLowerCase();
+                            const keywordInTitle = titleLower.includes(keywordLower);
+                            const additionalInTitle = !additionalKeywordLower || titleLower.includes(additionalKeywordLower);
+
+                            if (!(keywordInTitle && additionalInTitle)) {
+                                continue;
+                            }
+                        }
+
+                        const paper = extractPaperInfo(item, fetchedCount + 1);
+                        papers.push(paper);
+                        fetchedCount++;
+
+                        if (fetchedCount % 5 === 0 || fetchedCount === totalResults) {
+                            addResultMessage(`   ✅ Found ${fetchedCount}/${totalResults} qualifying papers`, 'success');
                         }
                     }
-                }
 
-                // Extract title
-                let title = '';
-                if (item.title && item.title.length > 0) {
-                    title = Array.isArray(item.title) ? item.title[0] : item.title;
-                }
+                    offset += currentRows;
 
-                // Extract abstract
-                let abstract = '';
-                if (item.abstract) {
-                    abstract = item.abstract.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
-                }
+                    // Rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 200));
 
-                // Extract journal
-                let journal = '';
-                if (item['container-title'] && item['container-title'].length > 0) {
-                    journal = Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'];
+                } catch (error) {
+                    addResultMessage(`❌ Error fetching data: ${error.message}`, 'error');
+                    break;
                 }
-
-                // Extract year
-                let year = '';
-                if (item['published-print']?.['date-parts']?.[0]?.[0]) {
-                    year = item['published-print']['date-parts'][0][0].toString();
-                } else if (item['published-online']?.['date-parts']?.[0]?.[0]) {
-                    year = item['published-online']['date-parts'][0][0].toString();
-                }
-
-                return {
-                    paper_id: `paper_${paperId.toString().padStart(3, '0')}`,
-                    title: title,
-                    abstract: abstract,
-                    authors: authors.length > 0 ? authors.join('; ') : 'Not Available',
-                    journal: journal,
-                    year: year,
-                    volume: item.volume || '',
-                    issue: item.issue || '',
-                    pages: item.page || '',
-                    publisher: item.publisher || '',
-                    doi: item.DOI || '',
-                    url: item.URL || '',
-                    type: item.type || ''
-                };
             }
 
-            function displayPapers(papers) {
-                const resultsBox = document.getElementById('resultsBox');
+            return papers;
+        }
 
-                // Clear the results box completely and show only the table
-                resultsBox.innerHTML = '';
-
-                // Add summary
-                const summaryDiv = document.createElement('div');
-                summaryDiv.style.marginBottom = '20px';
-                summaryDiv.innerHTML = `
-                    <h4 style="color: #059669; margin-bottom: 10px;">📊 FETCH SUMMARY</h4>
-                    <p style="color: #374151; font-weight: 600;">Total papers: <strong style="color: #059669;">${papers.length}</strong></p>
-                `;
-                resultsBox.appendChild(summaryDiv);
-
-                // Create table for papers
-                const tableContainer = document.createElement('div');
-                tableContainer.style.overflowX = 'auto';
-                tableContainer.style.marginTop = '20px';
-                tableContainer.style.border = '1px solid #e5e7eb';
-                tableContainer.style.borderRadius = '8px';
-                tableContainer.style.backgroundColor = '#fff';
-
-                const table = document.createElement('table');
-                table.style.width = '100%';
-                table.style.borderCollapse = 'collapse';
-                table.style.fontSize = '0.85em';
-                table.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-
-                // Table header
-                const headerRow = document.createElement('tr');
-                headerRow.style.backgroundColor = '#f8fafc';
-                headerRow.style.borderBottom = '2px solid #e2e8f0';
-
-                const headers = ['#', 'Title', 'Authors', 'Journal', 'Year', 'DOI'];
-                headers.forEach(headerText => {
-                    const th = document.createElement('th');
-                    th.textContent = headerText;
-                    th.style.padding = '12px 8px';
-                    th.style.textAlign = 'left';
-                    th.style.fontWeight = '600';
-                    th.style.color = '#374151';
-                    th.style.borderRight = '1px solid #e5e7eb';
-                    th.style.position = 'sticky';
-                    th.style.top = '0';
-                    th.style.backgroundColor = '#f8fafc';
-                    th.style.zIndex = '10';
-
-                    // Set column widths
-                    if (headerText === '#') th.style.width = '40px';
-                    else if (headerText === 'Title') th.style.width = '40%';
-                    else if (headerText === 'Authors') th.style.width = '25%';
-                    else if (headerText === 'Journal') th.style.width = '20%';
-                    else if (headerText === 'Year') th.style.width = '60px';
-                    else if (headerText === 'DOI') th.style.width = '15%';
-
-                    headerRow.appendChild(th);
-                });
-                table.appendChild(headerRow);
-
-                // Table rows
-                papers.forEach((paper, index) => {
-                    const row = document.createElement('tr');
-                    row.style.borderBottom = '1px solid #e5e7eb';
-                    row.style.transition = 'background-color 0.2s';
-
-                    // Hover effect
-                    row.addEventListener('mouseenter', () => {
-                        row.style.backgroundColor = '#f1f5f9';
-                    });
-                    row.addEventListener('mouseleave', () => {
-                        row.style.backgroundColor = 'transparent';
-                    });
-
-                    // Row data
-                    const rowData = [
-                        index + 1,
-                        paper.title || 'No title',
-                        paper.authors || 'No authors',
-                        paper.journal || 'No journal',
-                        paper.year || 'No year',
-                        paper.doi ? paper.doi.substring(0, 20) + (paper.doi.length > 20 ? '...' : '') : 'No DOI'
-                    ];
-
-                    rowData.forEach((cellData, cellIndex) => {
-                        const td = document.createElement('td');
-                        td.style.padding = '10px 8px';
-                        td.style.borderRight = '1px solid #e5e7eb';
-                        td.style.verticalAlign = 'top';
-                        td.style.wordWrap = 'break-word';
-
-                        // Special styling for different columns
-                        if (cellIndex === 0) { // Index
-                            td.style.textAlign = 'center';
-                            td.style.fontWeight = '600';
-                            td.style.color = '#6b7280';
-                        } else if (cellIndex === 1) { // Title
-                            td.style.fontWeight = '600';
-                            td.style.color = '#1e40af';
-                            td.style.lineHeight = '1.4';
-                        } else if (cellIndex === 4) { // Year
-                            td.style.textAlign = 'center';
-                            td.style.fontWeight = '600';
-                        } else if (cellIndex === 5 && paper.doi) { // DOI
-                            td.innerHTML = `<a href="https://doi.org/${paper.doi}" target="_blank" style="color: #059669; text-decoration: none; font-size: 0.8em;">${cellData}</a>`;
-                        } else {
-                            td.style.color = '#4b5563';
-                            td.style.fontSize = '0.9em';
-                        }
-
-                        if (cellIndex !== 5 || !paper.doi) {
-                            td.textContent = cellData;
-                        }
-
-                        row.appendChild(td);
-                    });
-
-                    table.appendChild(row);
-                });
-
-                tableContainer.appendChild(table);
-                resultsBox.appendChild(tableContainer);
-
-                // Add note at bottom
-                const noteDiv = document.createElement('div');
-                noteDiv.style.marginTop = '15px';
-                noteDiv.style.padding = '10px';
-                noteDiv.style.backgroundColor = '#f0f9ff';
-                noteDiv.style.border = '1px solid #0ea5e9';
-                noteDiv.style.borderRadius = '6px';
-                noteDiv.style.fontSize = '0.9em';
-                noteDiv.style.color = '#0369a1';
-                noteDiv.innerHTML = `
-                    <strong>📋 Table View:</strong> ${papers.length} papers displayed in table format.
-                    Click on DOI links to view papers. Download CSV for complete data including abstracts.
-                `;
-                resultsBox.appendChild(noteDiv);
+        function extractPaperInfo(item, paperId) {
+            // Extract authors
+            const authors = [];
+            if (item.author) {
+                for (const author of item.author) {
+                    if (author.given && author.family) {
+                        authors.push(`${author.given} ${author.family}`);
+                    } else if (author.family) {
+                        authors.push(author.family);
+                    }
+                }
             }
 
-            function downloadCSV(papers) {
-                const headers = [
-                    'paper_id', 'title', 'abstract', 'authors', 'journal', 'year', 'volume', 'issue', 'pages', 'publisher', 'doi', 'url', 'type',
-                    'abstract_source', 'abstract_confidence', 'original_category', 'original_keywords', 'contributions', 'limitations'
+            // Extract title
+            let title = '';
+            if (item.title && item.title.length > 0) {
+                title = Array.isArray(item.title) ? item.title[0] : item.title;
+            }
+
+            // Extract abstract
+            let abstract = '';
+            if (item.abstract) {
+                abstract = item.abstract.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            }
+
+            // Extract journal
+            let journal = '';
+            if (item['container-title'] && item['container-title'].length > 0) {
+                journal = Array.isArray(item['container-title']) ? item['container-title'][0] : item['container-title'];
+            }
+
+            // Extract year
+            let year = '';
+            if (item['published-print']?.['date-parts']?.[0]?.[0]) {
+                year = item['published-print']['date-parts'][0][0].toString();
+            } else if (item['published-online']?.['date-parts']?.[0]?.[0]) {
+                year = item['published-online']['date-parts'][0][0].toString();
+            }
+
+            return {
+                paper_id: `paper_${paperId.toString().padStart(3, '0')}`,
+                title: title,
+                abstract: abstract,
+                authors: authors.length > 0 ? authors.join('; ') : 'Not Available',
+                journal: journal,
+                year: year,
+                volume: item.volume || '',
+                issue: item.issue || '',
+                pages: item.page || '',
+                publisher: item.publisher || '',
+                doi: item.DOI || '',
+                url: item.URL || '',
+                type: item.type || ''
+            };
+        }
+
+        function displayPapers(papers) {
+            const resultsBox = document.getElementById('resultsBox');
+
+            // Clear the results box completely and show only the table
+            resultsBox.innerHTML = '';
+
+            // Add summary
+            const summaryDiv = document.createElement('div');
+            summaryDiv.style.marginBottom = '20px';
+            summaryDiv.innerHTML = `
+                <h4 style="color: #059669; margin-bottom: 10px;">📊 FETCH SUMMARY</h4>
+                <p style="color: #374151; font-weight: 600;">Total papers: <strong style="color: #059669;">${papers.length}</strong></p>
+            `;
+            resultsBox.appendChild(summaryDiv);
+
+            // Create table for papers
+            const tableContainer = document.createElement('div');
+            tableContainer.style.overflowX = 'auto';
+            tableContainer.style.marginTop = '20px';
+            tableContainer.style.border = '1px solid #e5e7eb';
+            tableContainer.style.borderRadius = '8px';
+            tableContainer.style.backgroundColor = '#fff';
+
+            const table = document.createElement('table');
+            table.style.width = '100%';
+            table.style.borderCollapse = 'collapse';
+            table.style.fontSize = '0.85em';
+            table.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+            // Table header
+            const headerRow = document.createElement('tr');
+            headerRow.style.backgroundColor = '#f8fafc';
+            headerRow.style.borderBottom = '2px solid #e2e8f0';
+
+            const headers = ['#', 'Title', 'Authors', 'Journal', 'Year', 'DOI'];
+            headers.forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                th.style.padding = '12px 8px';
+                th.style.textAlign = 'left';
+                th.style.fontWeight = '600';
+                th.style.color = '#374151';
+                th.style.borderRight = '1px solid #e5e7eb';
+                th.style.position = 'sticky';
+                th.style.top = '0';
+                th.style.backgroundColor = '#f8fafc';
+                th.style.zIndex = '10';
+
+                // Set column widths
+                if (headerText === '#') th.style.width = '40px';
+                else if (headerText === 'Title') th.style.width = '40%';
+                else if (headerText === 'Authors') th.style.width = '25%';
+                else if (headerText === 'Journal') th.style.width = '20%';
+                else if (headerText === 'Year') th.style.width = '60px';
+                else if (headerText === 'DOI') th.style.width = '15%';
+
+                headerRow.appendChild(th);
+            });
+            table.appendChild(headerRow);
+
+            // Table rows
+            papers.forEach((paper, index) => {
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid #e5e7eb';
+                row.style.transition = 'background-color 0.2s';
+
+                // Hover effect
+                row.addEventListener('mouseenter', () => {
+                    row.style.backgroundColor = '#f1f5f9';
+                });
+                row.addEventListener('mouseleave', () => {
+                    row.style.backgroundColor = 'transparent';
+                });
+
+                // Row data
+                const rowData = [
+                    index + 1,
+                    paper.title || 'No title',
+                    paper.authors || 'No authors',
+                    paper.journal || 'No journal',
+                    paper.year || 'No year',
+                    paper.doi ? paper.doi.substring(0, 20) + (paper.doi.length > 20 ? '...' : '') : 'No DOI'
                 ];
-                let csvContent = headers.join(',') + '\n';
 
-                papers.forEach(paper => {
-                    const row = headers.map(header => {
-                        const value = paper[header] || '';
-                        // Escape quotes and wrap in quotes if contains comma
-                        const escapedValue = value.toString().replace(/"/g, '""');
-                        return value.includes(',') || value.includes('"') || value.includes('\n') ? `"${escapedValue}"` : escapedValue;
-                    });
-                    csvContent += row.join(',') + '\n';
+                rowData.forEach((cellData, cellIndex) => {
+                    const td = document.createElement('td');
+                    td.style.padding = '10px 8px';
+                    td.style.borderRight = '1px solid #e5e7eb';
+                    td.style.verticalAlign = 'top';
+                    td.style.wordWrap = 'break-word';
+
+                    // Special styling for different columns
+                    if (cellIndex === 0) { // Index
+                        td.style.textAlign = 'center';
+                        td.style.fontWeight = '600';
+                        td.style.color = '#6b7280';
+                    } else if (cellIndex === 1) { // Title
+                        td.style.fontWeight = '600';
+                        td.style.color = '#1e40af';
+                        td.style.lineHeight = '1.4';
+                    } else if (cellIndex === 4) { // Year
+                        td.style.textAlign = 'center';
+                        td.style.fontWeight = '600';
+                    } else if (cellIndex === 5 && paper.doi) { // DOI
+                        td.innerHTML = `<a href="https://doi.org/${paper.doi}" target="_blank" style="color: #059669; text-decoration: none; font-size: 0.8em;">${cellData}</a>`;
+                    } else {
+                        td.style.color = '#4b5563';
+                        td.style.fontSize = '0.9em';
+                    }
+
+                    if (cellIndex !== 5 || !paper.doi) {
+                        td.textContent = cellData;
+                    }
+
+                    row.appendChild(td);
                 });
 
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                const url = URL.createObjectURL(blob);
-                link.setAttribute('href', url);
+                table.appendChild(row);
+            });
 
-                const keyword = document.getElementById('keyword').value.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
-                const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
-                link.setAttribute('download', `papers_${keyword}_${timestamp}.csv`);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+            tableContainer.appendChild(table);
+            resultsBox.appendChild(tableContainer);
 
-                addResultMessage('📥 CSV file downloaded successfully!', 'success');
+            // Add note at bottom
+            const noteDiv = document.createElement('div');
+            noteDiv.style.marginTop = '15px';
+            noteDiv.style.padding = '10px';
+            noteDiv.style.backgroundColor = '#f0f9ff';
+            noteDiv.style.border = '1px solid #0ea5e9';
+            noteDiv.style.borderRadius = '6px';
+            noteDiv.style.fontSize = '0.9em';
+            noteDiv.style.color = '#0369a1';
+            noteDiv.innerHTML = `
+                <strong>📋 Table View:</strong> ${papers.length} papers displayed in table format.
+                Click on DOI links to view papers. Download CSV for complete data including abstracts.
+            `;
+            resultsBox.appendChild(noteDiv);
+        }
+
+        function downloadCSV(papers) {
+            const headers = [
+                'paper_id', 'title', 'abstract', 'authors', 'journal', 'year', 'volume', 'issue', 'pages', 'publisher', 'doi', 'url', 'type',
+                'abstract_source', 'abstract_confidence', 'original_category', 'original_keywords', 'contributions', 'limitations'
+            ];
+            let csvContent = headers.join(',') + '\n';
+
+            papers.forEach(paper => {
+                const row = headers.map(header => {
+                    const value = paper[header] || '';
+                    // Escape quotes and wrap in quotes if contains comma
+                    const escapedValue = value.toString().replace(/"/g, '""');
+                    return value.includes(',') || value.includes('"') || value.includes('\n') ? `"${escapedValue}"` : escapedValue;
+                });
+                csvContent += row.join(',') + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+
+            const keyword = document.getElementById('keyword').value.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
+            link.setAttribute('download', `papers_${keyword}_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            addResultMessage('📥 CSV file downloaded successfully!', 'success');
+        }
+
+        function setLoading(loading) {
+            isLoading = loading;
+            const fetchBtn = document.getElementById('fetchBtn');
+            const fetchBtnText = document.getElementById('fetchBtnText');
+            const fetchSpinner = document.getElementById('fetchSpinner');
+
+            fetchBtn.disabled = loading;
+            fetchBtnText.style.display = loading ? 'none' : 'inline';
+            fetchSpinner.style.display = loading ? 'inline-block' : 'none';
+        }
+
+        function showProgress() {
+            document.getElementById('progressContainer').style.display = 'block';
+        }
+
+        function hideProgress() {
+            document.getElementById('progressContainer').style.display = 'none';
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            statusEl.style.display = 'block';
+        }
+
+        function clearResults() {
+            document.getElementById('resultsBox').innerHTML = '';
+            document.getElementById('resultsContainer').style.display = 'block';
+            document.getElementById('statusMessage').style.display = 'none';
+        }
+
+        function addResultMessage(message, type = 'info') {
+            const resultsBox = document.getElementById('resultsBox');
+            const timestamp = new Date().toLocaleTimeString();
+            const messageEl = document.createElement('div');
+
+            messageEl.style.color = getColorForType(type);
+            messageEl.style.marginBottom = '5px';
+            messageEl.style.fontFamily = 'Monaco, Menlo, monospace';
+            messageEl.style.fontSize = '0.9em';
+            messageEl.textContent = `[${timestamp}] ${message}`;
+
+            resultsBox.appendChild(messageEl);
+            resultsBox.scrollTop = resultsBox.scrollHeight;
+        }
+
+        function getColorForType(type) {
+            switch(type) {
+                case 'success': return '#059669';
+                case 'error': return '#dc2626';
+                case 'warning': return '#d97706';
+                default: return '#2563eb';
             }
+        }
 
-            function setLoading(loading) {
-                isLoading = loading;
-                const fetchBtn = document.getElementById('fetchBtn');
-                const fetchBtnText = document.getElementById('fetchBtnText');
-                const fetchSpinner = document.getElementById('fetchSpinner');
+        // Show initial status
+        showStatus('Ready to fetch papers...', 'info');
+        updateProcessSteps(1);
 
-                fetchBtn.disabled = loading;
-                fetchBtnText.style.display = loading ? 'none' : 'inline';
-                fetchSpinner.style.display = loading ? 'inline-block' : 'none';
+        // --- SOCKET.IO LOG STREAMING ---
+        const debugLogBox = document.getElementById('debugLogBox');
+        const socket = io();
+        let debugLines = [];
+        socket.on('log', function(msg) {
+            if (typeof msg === 'string' && msg.includes('[DEBUG]')) {
+                debugLines.push(msg);
+                if (debugLines.length > 100) debugLines.shift();
+                debugLogBox.innerHTML = debugLines.map(line => `<div class="debug-line">${line}</div>`).join('');
+                debugLogBox.scrollTop = debugLogBox.scrollHeight;
             }
-
-            function showProgress() {
-                document.getElementById('progressContainer').style.display = 'block';
-            }
-
-            function hideProgress() {
-                document.getElementById('progressContainer').style.display = 'none';
-            }
-
-            function showStatus(message, type) {
-                const statusEl = document.getElementById('statusMessage');
-                statusEl.textContent = message;
-                statusEl.className = 'status ' + type;
-                statusEl.style.display = 'block';
-            }
-
-            function clearResults() {
-                document.getElementById('resultsBox').innerHTML = '';
-                document.getElementById('resultsContainer').style.display = 'block';
-                document.getElementById('statusMessage').style.display = 'none';
-            }
-
-            function addResultMessage(message, type = 'info') {
-                const resultsBox = document.getElementById('resultsBox');
-                const timestamp = new Date().toLocaleTimeString();
-                const messageEl = document.createElement('div');
-
-                messageEl.style.color = getColorForType(type);
-                messageEl.style.marginBottom = '5px';
-                messageEl.style.fontFamily = 'Monaco, Menlo, monospace';
-                messageEl.style.fontSize = '0.9em';
-                messageEl.textContent = `[${timestamp}] ${message}`;
-
-                resultsBox.appendChild(messageEl);
-                resultsBox.scrollTop = resultsBox.scrollHeight;
-            }
-
-            function getColorForType(type) {
-                switch(type) {
-                    case 'success': return '#059669';
-                    case 'error': return '#dc2626';
-                    case 'warning': return '#d97706';
-                    default: return '#2563eb';
-                }
-            }
-
-            // Show initial status
-            showStatus('Ready to fetch papers...', 'info');
-            updateProcessSteps(1);
-
-            // Live log viewer
-            const logElem = document.getElementById('log');
-            const evtSource = new EventSource('/api/logs');
-            evtSource.onmessage = function(event) {
-              logElem.textContent += event.data + '\n';
-              logElem.scrollTop = logElem.scrollHeight;
-            };
-            evtSource.onerror = function() {
-              logElem.textContent += '\n[Connection lost to backend log stream]\n';
-            };
         });
+        // Optionally, poll every second for new logs (if backend supports it)
+        setInterval(() => {
+            // No-op if using Socket.IO, but can be used for fallback polling
+        }, 1000);
+    });
     </script>
 </body>
 </html>

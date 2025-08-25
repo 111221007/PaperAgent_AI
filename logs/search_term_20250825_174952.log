@@ -1,0 +1,5 @@
+2025-08-25 17:49:52,984 - litorganizer - INFO - Starting in GUI mode with enhanced logging
+2025-08-25 17:49:52,984 - litorganizer - INFO - Log file: logs/search_term_20250825_174952.log
+2025-08-25 17:49:56,917 - litorganizer.parsers - DEBUG - Loaded API configuration from file
+2025-08-25 17:49:56,918 - litorganizer - DEBUG - Loaded API settings from config file
+2025-08-25 17:49:56,918 - litorganizer - INFO - GUI initialized
