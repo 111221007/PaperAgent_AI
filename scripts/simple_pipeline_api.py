@@ -639,4 +639,5 @@ if __name__ == '__main__':
     print('[DEBUG] Starting Flask app on port 7860')
     stream_log('[DEBUG] __main__ block executed, Flask app starting')
     threading.Thread(target=periodic_log, daemon=True).start()
-    socketio.run(app, host='0.0.0.0', port=7860, debug=True, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
