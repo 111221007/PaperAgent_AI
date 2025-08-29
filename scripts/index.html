@@ -1087,9 +1087,16 @@
             const url = URL.createObjectURL(blob);
             link.setAttribute('href', url);
 
+            // --- Updated logic for filename ---
             const keyword = document.getElementById('keyword').value.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            const additional1 = document.getElementById('additional_keyword').value.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            const additional2 = document.getElementById('additional_keyword2').value.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
             const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
-            link.setAttribute('download', `papers_${keyword}_${timestamp}.csv`);
+            let filename = keyword;
+            if (additional1) filename += `_${additional1}`;
+            if (additional2) filename += `_${additional2}`;
+            filename += `_${timestamp}.csv`;
+            link.setAttribute('download', filename);
             link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();

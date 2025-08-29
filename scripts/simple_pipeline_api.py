@@ -7,6 +7,7 @@ Simple and reliable paper fetching and processing
 from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO
+from bs4 import BeautifulSoup
 import re
 import urllib.parse
 import json
@@ -15,6 +16,7 @@ import time
 import logging
 import threading
 import os
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app)
@@ -54,7 +56,7 @@ def fetch_papers():
         data = request.json
         keyword = data.get('keyword', '').strip()
         additional_keyword = data.get('additional_keyword', '').strip()
-        additional_keyword2 = data.get('additional_keyword2', '').strip()  # NEW FIELD
+        additional_keyword2 = data.get('additional_keyword2', '').strip()  # NEW
         from_year = int(data.get('from_year', 2020))
         to_year = int(data.get('to_year', 2025))
         total_results = min(int(data.get('total_results', 5)), 100)
@@ -74,19 +76,20 @@ def fetch_papers():
 
         keyword_lower = keyword.lower().strip()
         additional_keyword_lower = additional_keyword.lower().strip()
-        additional_keyword2_lower = additional_keyword2.lower().strip()  # NEW FIELD
+        additional_keyword2_lower = additional_keyword2.lower().strip()  # NEW
 
         while fetched_count < total_results and processed_count < max_attempts:
             try:
                 remaining = total_results - fetched_count
                 current_rows = min(rows_per_request, remaining * 2)
 
-                # Build Crossref API URL
-                url = f'https://api.crossref.org/works?query.title={urllib.parse.quote(keyword)}'
+                # Build query with up to 3 keywords
+                query = urllib.parse.quote(keyword)
                 if additional_keyword:
-                    url += f'+{urllib.parse.quote(additional_keyword)}'
+                    query += f'+{urllib.parse.quote(additional_keyword)}'
                 if additional_keyword2:
-                    url += f'+{urllib.parse.quote(additional_keyword2)}'
+                    query += f'+{urllib.parse.quote(additional_keyword2)}'
+                url = f'https://api.crossref.org/works?query.title={query}'
 
                 url += f'&filter=from-pub-date:{from_year},until-pub-date:{to_year}'
                 if paper_type_filter:
@@ -121,6 +124,7 @@ def fetch_papers():
                         keyword_in_title = keyword_lower in title_lower
                         additional_in_title = not additional_keyword_lower or additional_keyword_lower in title_lower
                         additional2_in_title = not additional_keyword2_lower or additional_keyword2_lower in title_lower
+
                         if not (keyword_in_title and additional_in_title and additional2_in_title):
                             continue
 
@@ -151,6 +155,85 @@ def fetch_papers():
             'message': 'Failed to fetch papers'
         }), 500
 
+# --- Abstract fetching logic from abstract_extractor.py ---
+def fetch_abstract_openalex(title):
+    try:
+        url = f"https://api.openalex.org/works?filter=title.search:{urllib.parse.quote(title)}"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get('results'):
+                return data['results'][0].get('abstract_inverted_index')
+    except Exception:
+        pass
+    return None
+
+def fetch_abstract_crossref(title):
+    try:
+        url = f"https://api.crossref.org/works?query.title={urllib.parse.quote(title)}"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            items = data.get('message', {}).get('items', [])
+            if items:
+                return items[0].get('abstract')
+    except Exception:
+        pass
+    return None
+
+def fetch_abstract_semanticscholar(title):
+    try:
+        url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={urllib.parse.quote(title)}&fields=title,abstract"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            if data.get('data'):
+                return data['data'][0].get('abstract')
+    except Exception:
+        pass
+    return None
+
+def fetch_abstract_arxiv(title):
+    try:
+        url = f"http://export.arxiv.org/api/query?search_query=ti:{urllib.parse.quote(title)}&max_results=1"
+        r = requests.get(url, timeout=10)
+        if r.status_code == 200 and '<entry>' in r.text:
+            soup = BeautifulSoup(r.text, 'xml')
+            entry = soup.find('entry')
+            if entry and entry.find('summary'):
+                return entry.find('summary').text.strip()
+    except Exception:
+        pass
+    return None
+
+def fetch_abstract_web_scrape(title):
+    try:
+        search_url = f"https://scholar.google.com/scholar?q={urllib.parse.quote(title)}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        r = requests.get(search_url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            soup = BeautifulSoup(r.text, 'html.parser')
+            for div in soup.find_all('div', class_='gs_ri'):
+                if div.find('h3') and title.lower() in div.find('h3').text.lower():
+                    snippet = div.find('div', class_='gs_rs')
+                    if snippet:
+                        return snippet.text.strip()
+    except Exception:
+        pass
+    return None
+
+def fetch_abstract_for_title(title):
+    """Try all sources in order for a given title."""
+    for func in [fetch_abstract_openalex, fetch_abstract_crossref, fetch_abstract_semanticscholar, fetch_abstract_arxiv, fetch_abstract_web_scrape]:
+        abstract = func(title)
+        if abstract:
+            if isinstance(abstract, dict):
+                # OpenAlex returns an inverted index dict
+                return ' '.join(abstract.keys())
+            return abstract
+        time.sleep(1)
+    return ''
+
 def extract_paper_info(item, paper_id):
     """Extract paper information from CrossRef item"""
     authors = []
@@ -165,9 +248,12 @@ def extract_paper_info(item, paper_id):
     if item.get('title') and len(item['title']) > 0:
         title = item['title'][0] if isinstance(item['title'], list) else item['title']
 
+    # Use improved multi-source abstract fetching if CrossRef abstract is missing or empty
     abstract = ''
     if item.get('abstract'):
         abstract = re.sub(r'<[^>]+>', '', item['abstract']).replace('\n', ' ').strip()
+    if not abstract and title:
+        abstract = fetch_abstract_for_title(title)
 
     journal = ''
     if item.get('container-title') and len(item['container-title']) > 0:
@@ -640,8 +726,30 @@ def categorize_paper(title, abstract):
 
 # Ensure the app runs on Hugging Face Spaces by binding to port 7860
 if __name__ == '__main__':
-    print('[DEBUG] Starting Flask app on port 7860')
+    print('[DEBUG] Starting Flask app on port 5000')
     stream_log('[DEBUG] __main__ block executed, Flask app starting')
     threading.Thread(target=periodic_log, daemon=True).start()
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port, allow_unsafe_werkzeug=True)
+
+@app.route('/api/save-csv', methods=['POST'])
+def save_csv():
+    try:
+        data = request.get_json()
+        papers = data.get('papers', [])
+        keyword = data.get('keyword', '').strip().replace(' ', '_').lower()
+        additional1 = data.get('additional_keyword', '').strip().replace(' ', '_').lower()
+        additional2 = data.get('additional_keyword2', '').strip().replace(' ', '_').lower()
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        filename = keyword
+        if additional1:
+            filename += f'_{additional1}'
+        if additional2:
+            filename += f'_{additional2}'
+        filename += f'_{timestamp}.csv'
+        filepath = os.path.join('logs', filename)
+        df = pd.DataFrame(papers)
+        df.to_csv(filepath, index=False)
+        return jsonify({'success': True, 'filename': filename, 'filepath': filepath})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
